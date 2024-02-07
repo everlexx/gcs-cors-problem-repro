@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>GCS CORS problem demo</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			let signedURL;
+
+			async function generateSignedURL() {
+				document.querySelector('#error-1').innerText = '';
+				document.querySelector('#status-1').innerText = 'Generating...';
+
+				try {
+					const response = await fetch('http://localhost:34567/generate-signed-url', {
+						method: 'POST',
+						body: JSON.stringify({
+							serviceAccount: JSON.parse(
+								await document.querySelector('#service-account').files.item(0).text(),
+							),
+							bucket: document.querySelector('#bucket-name').value,
+							size: 1024,
+						}),
+						headers: {
+							Accept: 'application/json',
+							'Content-Type': 'application/json',
+						},
+					});
+
+					signedURL = (await response.json()).url;
+					document.querySelector('#status-1').innerText = signedURL;
+				} catch (error) {
+					document.querySelector('#error-1').innerText = String(error);
+					document.querySelector('#status-1').innerText = '';
+				}
+			}
+
+			async function uploadData() {
+				document.querySelector('#error-2').innerText = '';
+				document.querySelector('#status-2').innerText = 'Uploading...';
+
+				try {
+					await fetch(signedURL, {
+						method: 'PUT',
+
+						body: new Blob(new Array(1024).fill(0)),
+
+						headers: new Headers({
+							'X-Goog-Content-Length-Range': '1024,1024',
+							'Content-Type': 'application/octet-stream',
+						}),
+
+						duplex: 'half',
+					});
+
+					document.querySelector('#status-2').innerText = 'Uploaded successfully! ✅';
+				} catch (error) {
+					document.querySelector('#error-2').innerText = String(error);
+					document.querySelector('#status-2').innerText = '';
+				}
+			}
+		</script>
+	</head>
+	<body class="flex flex-col items-center">
+		<div class="px-5 py-48 max-w-[440px]">
+			<div class="flex flex-col">
+				<h1 class="text-xl font-semibold">Step 1: Specify GCS details</h1>
+				<p class="mt-3">You'll need to provide a service account and a bucket name.</p>
+				<input type="file" id="service-account" class="mt-4" />
+				<input
+					type="text"
+					id="bucket-name"
+					placeholder="Bucket name"
+					class="px-4 py-2 mt-4 bg-[#efefef] border-[#cccccc] border rounded" />
+			</div>
+			<div class="flex flex-col mt-8">
+				<h1 class="text-xl font-semibold">Step 2: Generate a signed URL</h1>
+				<p class="mt-3">Click the button below to generate a signed URL.</p>
+				<button
+					type="button"
+					class="mt-3 bg-[#121212] text-[#efefef] rounded p-3"
+					onclick="generateSignedURL()">
+					Generate
+				</button>
+				<p class="font-[monospace] mt-3 break-all" id="status-1"></p>
+				<p class="font-[monospace] text-[#ff0000]" id="error-1"></p>
+			</div>
+			<div class="flex flex-col mt-8">
+				<h1 class="text-xl font-semibold">Step 3: Open DevTools (F12)</h1>
+				<p class="mt-3">Open your browser's DevTools to capture the network request.</p>
+			</div>
+			<div class="flex flex-col mt-8">
+				<h1 class="text-xl font-semibold">Step 4: Upload data</h1>
+				<p class="mt-3">Click the button below to upload data to the signed URL generate above.</p>
+				<button type="button" class="mt-3 bg-[#121212] text-[#efefef] rounded p-3" onclick="uploadData()">
+					Upload
+				</button>
+				<p class="font-[monospace] mt-3" id="status-2"></p>
+				<p class="font-[monospace] text-[#ff0000]" id="error-2"></p>
+			</div>
+		</div>
+	</body>
+</html>
